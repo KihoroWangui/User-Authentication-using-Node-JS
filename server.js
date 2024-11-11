@@ -2,6 +2,7 @@ const express = require("express");
 const jwt = require("jwt-simple");
 const bcrypt = require("bcryptjs");
 const dotenv = require("dotenv");
+const path = require("path");
 
 // Load environment variables from .env file
 dotenv.config();
@@ -9,6 +10,10 @@ dotenv.config();
 // Initialize the app
 const app = express();
 app.use(express.json()); // Middleware to parse JSON bodies
+app.use(express.urlencoded({ extended: true })); // Middleware to parse form data
+
+// Serve static files (HTML pages)
+app.use(express.static(path.join(__dirname, "public")));
 
 const users = []; // In-memory array to store user info (this can be replaced with a database)
 
@@ -17,6 +22,11 @@ const generateToken = (user) => {
   const payload = { username: user.username };
   return jwt.encode(payload, process.env.JWT_SECRET);
 };
+
+// Root route to check if the server is running
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 
 // Registration route
 app.post("/register", async (req, res) => {
@@ -57,7 +67,7 @@ app.post("/login", async (req, res) => {
   res.json({ message: "Login successful", token });
 });
 
-// Middleware to protect routes
+// Protected route (only accessible with a valid token)
 const authenticateJWT = (req, res, next) => {
   const token = req.header("Authorization")?.split(" ")[1];
   if (!token) {
@@ -72,11 +82,6 @@ const authenticateJWT = (req, res, next) => {
     res.status(400).json({ message: "Invalid or expired token" });
   }
 };
-
-// Protected route (only accessible with a valid token)
-app.get("/protected", authenticateJWT, (req, res) => {
-  res.json({ message: "Welcome to the protected route", user: req.user });
-});
 
 // Start the server
 const PORT = process.env.PORT || 5000;
